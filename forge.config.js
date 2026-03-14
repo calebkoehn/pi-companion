@@ -39,7 +39,7 @@ module.exports = {
       config: {
         repository: { owner: 'calebkoehn', name: 'pi-companion' },
         prerelease: false,
-        draft: true,
+        draft: false,
       },
     },
   ],
