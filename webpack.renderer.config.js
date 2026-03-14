@@ -6,12 +6,8 @@ rules.push({
 });
 
 module.exports = {
-  // Put your normal webpack config below here
   module: {
     rules,
   },
-  entry: {
-    renderer: './src/renderer.js',
-    'note-editor/renderer': './src/pages/note-editor/renderer.js',
-  },
+  // No renderer entry points — PI Companion uses a plain HTML panel, not a webpack-bundled renderer
 };

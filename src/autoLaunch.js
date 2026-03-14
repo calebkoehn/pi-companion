@@ -1,37 +1,45 @@
-const AutoLaunch = require("electron-auto-launch");
-const { app } = require("electron");
-const logger = require("./logger");
+const AutoLaunch = require('electron-auto-launch');
+const logger = require('./logger');
 
-const autoLauncher = new AutoLaunch({
-  name: "PI Companion",
-  path: app.getPath("exe"),
-  isHidden: true,
-});
+let _launcher = null;
+
+function getLauncher() {
+  if (!_launcher) {
+    const { app } = require('electron');
+    _launcher = new AutoLaunch({
+      name: 'PI Companion',
+      path: app.getPath('exe'),
+      isHidden: true,
+    });
+  }
+  return _launcher;
+}
 
 async function enable() {
   try {
-    const isEnabled = await autoLauncher.isEnabled();
+    const launcher = getLauncher();
+    const isEnabled = await launcher.isEnabled();
     if (!isEnabled) {
-      await autoLauncher.enable();
-      logger.info("Auto-launch enabled");
+      await launcher.enable();
+      logger.info('Auto-launch enabled');
     }
   } catch (err) {
-    logger.error("Failed to enable auto-launch", err);
+    logger.warn('Failed to enable auto-launch', { error: err.message });
   }
 }
 
 async function disable() {
   try {
-    await autoLauncher.disable();
-    logger.info("Auto-launch disabled");
+    await getLauncher().disable();
+    logger.info('Auto-launch disabled');
   } catch (err) {
-    logger.error("Failed to disable auto-launch", err);
+    logger.warn('Failed to disable auto-launch', { error: err.message });
   }
 }
 
 async function isEnabled() {
   try {
-    return await autoLauncher.isEnabled();
+    return await getLauncher().isEnabled();
   } catch {
     return false;
   }

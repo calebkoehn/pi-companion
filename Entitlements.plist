@@ -17,6 +17,6 @@
     <key>com.apple.security.personal-information.location</key>
     <true/>
     <key>com.apple.security.get-task-allow</key>
-    <true/>
+    <false/>
   </dict>
 </plist>
