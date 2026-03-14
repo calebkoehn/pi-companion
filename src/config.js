@@ -1,13 +1,13 @@
 const path = require("path");
 
 const PI_BACKEND_URL =
-  process.env.PI_BACKEND_URL || "https://api.performanceintelligenceai.com";
+  process.env.PI_BACKEND_URL || "https://performanceintelligenceai.com";
 
 const RECALL_REGION_URL =
   process.env.RECALL_REGION_URL || "https://us-west-2.recall.ai";
 
 const PI_APP_URL =
-  process.env.PI_APP_URL || "https://www.performanceintelligenceai.com";
+  process.env.PI_APP_URL || "https://performanceintelligenceai.com";
 
 const NODE_ENV = process.env.NODE_ENV || "production";
 

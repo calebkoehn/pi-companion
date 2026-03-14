@@ -7,7 +7,7 @@ let tray = null;
 let currentState = "idle";
 let meetingTitle = null;
 
-const ICON_DIR = path.join(__dirname, "..", "assets");
+const ICON_DIR = path.join(__dirname, "assets");
 
 const ICONS = {
   idle: path.join(ICON_DIR, "tray-idle.png"),
