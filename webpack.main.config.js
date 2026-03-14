@@ -12,6 +12,7 @@ module.exports = {
       patterns: [
         { from: path.resolve(__dirname, 'src/assets'), to: path.resolve(__dirname, '.webpack/main/assets') },
         { from: path.resolve(__dirname, 'src/panel.html'), to: path.resolve(__dirname, '.webpack/main/panel.html') },
+        { from: path.resolve(__dirname, 'src/panel-preload.js'), to: path.resolve(__dirname, '.webpack/main/panel-preload.js') },
       ],
     }),
   ],
