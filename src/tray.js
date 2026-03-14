@@ -1,104 +1,78 @@
-const { Tray, Menu, nativeImage, shell } = require("electron");
-const path = require("path");
-const { PI_APP_URL } = require("./config");
-const logger = require("./logger");
+const { Tray, Menu, nativeImage, shell } = require('electron');
+const path = require('path');
+const { PI_APP_URL } = require('./config');
+const logger = require('./logger');
 
 let tray = null;
-let currentState = "idle";
-let meetingTitle = null;
-
-const ICON_DIR = path.join(__dirname, "assets");
-
+let currentState = 'idle';
+const ICON_DIR = path.join(__dirname, 'assets');
 const ICONS = {
-  idle: path.join(ICON_DIR, "tray-idle.png"),
-  recording: path.join(ICON_DIR, "tray-recording.png"),
-  error: path.join(ICON_DIR, "tray-error.png"),
-  "needs-login": path.join(ICON_DIR, "tray-error.png"),
+  idle: path.join(ICON_DIR, 'tray-idle.png'),
+  recording: path.join(ICON_DIR, 'tray-recording.png'),
+  error: path.join(ICON_DIR, 'tray-error.png'),
+  'needs-login': path.join(ICON_DIR, 'tray-error.png'),
 };
 
-function createTray() {
-  const iconPath = ICONS.idle;
-  let icon;
+function loadIcon(state) {
   try {
-    icon = nativeImage.createFromPath(iconPath);
+    let icon = nativeImage.createFromPath(ICONS[state] || ICONS.idle);
     icon = icon.resize({ width: 16, height: 16 });
     icon.setTemplateImage(true);
+    return icon;
   } catch {
-    icon = nativeImage.createEmpty();
+    return nativeImage.createEmpty();
   }
-
-  tray = new Tray(icon);
-  tray.setToolTip("PI Companion");
-  updateMenu();
-
-  logger.info("System tray created");
-  return tray;
 }
 
-function setState(state, title) {
-  currentState = state;
-  meetingTitle = title || null;
+function createTray(onLeftClick) {
+  tray = new Tray(loadIcon('idle'));
+  tray.setToolTip('Performance IQ');
 
-  const iconPath = ICONS[state] || ICONS.idle;
-  try {
-    let icon = nativeImage.createFromPath(iconPath);
-    icon = icon.resize({ width: 16, height: 16 });
-    icon.setTemplateImage(true);
-    if (tray) tray.setImage(icon);
-  } catch {
-    // Icon file may not exist during development
-  }
-
-  updateMenu();
-}
-
-function updateMenu() {
-  if (!tray) return;
-
-  const statusLine =
-    currentState === "recording"
-      ? `Recording: ${meetingTitle || "Meeting"}`
-      : currentState === "needs-login"
-        ? "Not connected \u2014 click to log in"
-        : currentState === "error"
-          ? "PI Companion \u2014 Error"
-          : "PI Companion \u2014 Idle";
-
-  const menuItems = [
-    { label: statusLine, enabled: false },
-    { type: "separator" },
-    {
-      label: "Open PI Web App",
-      click: () => {
-        shell.openExternal(PI_APP_URL);
-      },
-    },
-  ];
-
-  if (currentState === "needs-login") {
-    menuItems.push({
-      label: "Log in via PI Web App",
-      click: () => {
-        shell.openExternal(`${PI_APP_URL}/settings`);
-      },
-    });
-  }
-
-  menuItems.push({ type: "separator" });
-  menuItems.push({
-    label: "Quit",
-    click: () => {
-      const { app } = require("electron");
-      app.quit();
-    },
+  // Left click = toggle panel
+  tray.on('click', () => {
+    if (onLeftClick) onLeftClick(tray.getBounds());
   });
 
-  const contextMenu = Menu.buildFromTemplate(menuItems);
-  tray.setContextMenu(contextMenu);
-}
+  // Right click = context menu
+  tray.on('right-click', () => buildContextMenu());
 
-function getTray() {
+  updateContextMenu();
+  logger.info('System tray created');
   return tray;
 }
+
+function updateContextMenu() {
+  if (!tray) return;
+  const items = [
+    { label: stateLabel(), enabled: false },
+    { type: 'separator' },
+    { label: 'Open Dashboard', click: () => shell.openExternal(PI_APP_URL) },
+    { label: 'Settings', click: () => shell.openExternal(`${PI_APP_URL}/settings`) },
+    { type: 'separator' },
+    { label: 'Quit', click: () => require('electron').app.quit() },
+  ];
+  tray.setContextMenu(Menu.buildFromTemplate(items));
+}
+
+function buildContextMenu() {
+  updateContextMenu();
+  tray.popUpContextMenu();
+}
+
+function stateLabel() {
+  if (currentState === 'recording') return '● Recording';
+  if (currentState === 'needs-login') return 'Not connected — click to connect';
+  return 'Performance IQ — Idle';
+}
+
+function setState(state) {
+  currentState = state;
+  if (tray) {
+    tray.setImage(loadIcon(state));
+    updateContextMenu();
+  }
+}
+
+function getTray() { return tray; }
 
 module.exports = { createTray, setState, getTray };

@@ -1,0 +1,144 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Performance IQ</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#1D5FC4;--blue-dark:#1449A0;--bg:#F7F9FB;--card:#FFF;--border:#E2E8EF;--text:#1F2937;--muted:#6B7280;--light:#9CA3AF;--red:#EF4444}
+html,body{width:360px;background:transparent;font-family:-apple-system,'Open Sans',sans-serif;font-size:13px;color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none}
+.panel{width:360px;background:var(--bg);border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,0.14);border:1px solid var(--border);display:flex;flex-direction:column;max-height:560px}
+.header{background:var(--blue);padding:14px 16px 12px;-webkit-app-region:drag;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.hl{display:flex;align-items:center;gap:9px}
+.logo{width:28px;height:28px;flex-shrink:0}
+.ht{color:#fff;font-weight:700;font-size:14px}
+.hs{color:rgba(255,255,255,.7);font-size:11px;margin-top:1px}
+.dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);flex-shrink:0;-webkit-app-region:no-drag}
+.dot.idle{background:#4ADE80}
+.dot.recording{background:#F87171;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.3)}}
+.datebar{padding:9px 16px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0}
+.dl{font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+.dd{font-size:11px;color:var(--muted)}
+.meetings{overflow-y:auto;flex:1;padding:8px}
+.meetings::-webkit-scrollbar{width:3px}
+.meetings::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.ei{font-size:26px;margin-bottom:8px}
+.et{font-weight:600;color:var(--text);margin-bottom:3px;font-size:13px}
+.nocal{padding:20px 16px;text-align:center}
+.nocal p{color:var(--muted);font-size:12px;margin-bottom:10px;line-height:1.5}
+.cbtn{background:var(--blue);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;-webkit-app-region:no-drag}
+.cbtn:hover{background:var(--blue-dark)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:11px 12px;margin-bottom:6px;transition:border-color .15s}
+.card:last-child{margin-bottom:0}
+.card.rec{border-color:var(--red);background:#FFF5F5}
+.card.skip{opacity:.5}
+.card.past{opacity:.4}
+.cr{display:flex;align-items:flex-start;gap:10px}
+.tc{min-width:54px;flex-shrink:0}
+.ct{font-size:11px;font-weight:700;color:var(--blue);line-height:1.3}
+.cd{font-size:10px;color:var(--light);margin-top:1px}
+.ci{flex:1;min-width:0}
+.cn{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.ca{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;flex-shrink:0;text-transform:uppercase;letter-spacing:.3px}
+.br{background:#FEE2E2;color:#DC2626;display:flex;align-items:center;gap:3px}
+.bs{background:#F3F4F6;color:#6B7280}
+.bd{background:#DCFCE7;color:#15803D}
+.rdot{width:5px;height:5px;border-radius:50%;background:#DC2626;animation:pulse 1s infinite;display:inline-block}
+.actions{display:flex;gap:5px;margin-top:9px;-webkit-app-region:no-drag}
+.btn{flex:1;padding:5px 0;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:4px;transition:all .12s}
+.btn-r{background:var(--blue);color:#fff}
+.btn-r:hover{background:var(--blue-dark)}
+.btn-s{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-s:hover{background:#F3F4F6;color:var(--text)}
+.now{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px}
+.now::before,.now::after{content:'';flex:1;height:1px;background:var(--red);opacity:.25}
+.footer{border-top:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;-webkit-app-region:no-drag}
+.fb{font-size:11px;color:var(--blue);cursor:pointer;font-weight:600;background:none;border:none;padding:0}
+.fb:hover{text-decoration:underline}
+.fr{display:flex;align-items:center;gap:10px}
+.ver{font-size:10px;color:var(--light)}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style></head><body>
+<div class="panel">
+<div class="header">
+  <div class="hl">
+    <svg class="logo" viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="7" fill="white" fill-opacity="0.15"/>
+      <rect x="5" y="19" width="4" height="7" rx="1.5" fill="white"/>
+      <rect x="11" y="13" width="4" height="13" rx="1.5" fill="white" fill-opacity="0.85"/>
+      <rect x="17" y="8" width="4" height="18" rx="1.5" fill="white" fill-opacity="0.7"/>
+      <rect x="23" y="14" width="4" height="12" rx="1.5" fill="white" fill-opacity="0.55"/>
+      <circle cx="21" cy="7" r="3" fill="#4ADE80"/>
+      <path d="M19.5 7L21 8.5L23.5 6" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div><div class="ht">Performance IQ</div><div class="hs" id="sub">Loading...</div></div>
+  </div>
+  <div class="dot" id="dot"></div>
+</div>
+<div class="datebar"><div class="dl">Today's Meetings</div><div class="dd" id="ds"></div></div>
+<div class="meetings" id="list"><div class="empty"><div class="spinner"></div></div></div>
+<div class="footer">
+  <button class="fb" id="db">Open Dashboard &rarr;</button>
+  <div class="fr"><button class="fb" id="sb">Settings</button><span class="ver">v1.0.0</span></div>
+</div>
+</div>
+<script>
+const list=document.getElementById('list'),sub=document.getElementById('sub'),dot=document.getElementById('dot');
+document.getElementById('ds').textContent=new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+document.getElementById('db').onclick=()=>window.pi.openDashboard();
+document.getElementById('sb').onclick=()=>window.pi.openSettings();
+let events=[],recs=new Set(),skips=new Set(),calOk=true;
+const fmt=iso=>new Date(iso).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+const dur=(s,e)=>{const m=Math.round((new Date(e)-new Date(s))/6e4);return m<60?m+'m':Math.floor(m/60)+'h'+(m%60?' '+(m%60)+'m':'')};
+const names=a=>a.filter(x=>!x.self).map(x=>x.displayName||x.email.split('@')[0]).slice(0,3).join(', ');
+const isPast=e=>new Date(e.end)<new Date();
+const isNow=e=>{const n=new Date();return new Date(e.start)<=n&&n<=new Date(e.end)};
+function setStatus(s){dot.className='dot';if(s==='idle')dot.classList.add('idle');else if(s==='recording')dot.classList.add('recording')}
+function render(){
+  if(!calOk){
+    list.innerHTML='<div class="nocal"><p>Connect Google Calendar in the web app to see your meetings here.</p><button class="cbtn" id="cc">Connect Calendar</button></div>';
+    document.getElementById('cc').onclick=()=>window.pi.openSettings();
+    sub.textContent='Calendar not connected';return;
+  }
+  if(!events.length){list.innerHTML='<div class="empty"><div class="ei">🎉</div><div class="et">No meetings today</div><div>Enjoy the focus time!</div></div>';sub.textContent='No meetings today';return}
+  const now=new Date();let html='',nd=false;
+  events.forEach((ev,i)=>{
+    const past=isPast(ev),cur=isNow(ev),rec=recs.has(ev.id),skip=skips.has(ev.id);
+    if(!nd&&!past&&new Date(ev.start)>now){if(i>0)html+='<div class="now">Now</div>';nd=true}
+    let cls='card';if(cur&&rec)cls+=' rec';else if(skip)cls+=' skip';else if(past)cls+=' past';
+    let badge='';
+    if(cur&&rec)badge='<span class="badge br"><span class="rdot"></span>Recording</span>';
+    else if(skip)badge='<span class="badge bs">Skipped</span>';
+    else if(past)badge='<span class="badge bd">Done</span>';
+    let act='';
+    if(!past){
+      if(rec)act=`<div class="actions"><button class="btn btn-s" data-id="${ev.id}" data-a="s">Stop Recording</button></div>`;
+      else if(skip)act=`<div class="actions"><button class="btn btn-r" data-id="${ev.id}" data-a="r">Record Instead</button></div>`;
+      else act=`<div class="actions"><button class="btn btn-r" data-id="${ev.id}" data-a="r">&#9679; Record</button><button class="btn btn-s" data-id="${ev.id}" data-a="s">Skip</button></div>`;
+    }
+    const att=names(ev.attendees);
+    html+=`<div class="${cls}"><div class="cr"><div class="tc"><div class="ct">${fmt(ev.start)}</div><div class="cd">${dur(ev.start,ev.end)}</div></div><div class="ci"><div class="cn" title="${ev.title}">${ev.title}</div>${att?`<div class="ca">with ${att}</div>`:''}</div>${badge?`<div style="flex-shrink:0">${badge}</div>`:''}</div>${act}</div>`;
+  });
+  list.innerHTML=html;
+  list.querySelectorAll('[data-a]').forEach(b=>{
+    b.onclick=()=>{const id=b.dataset.id,a=b.dataset.a;
+      if(a==='r'){recs.add(id);skips.delete(id);window.pi.recordMeeting(id)}
+      else{skips.add(id);recs.delete(id);window.pi.skipMeeting(id)}
+      render()};
+  });
+  const next=events.find(e=>!isPast(e));
+  if(next){const m=Math.round((new Date(next.start)-now)/6e4);
+    if(isNow(next))sub.textContent=`In meeting \u2014 ${next.title}`;
+    else if(m<=60)sub.textContent=`Next in ${m}m \u2014 ${next.title.substring(0,22)}`;
+    else sub.textContent=`${events.length} meeting${events.length>1?'s':''} today`;
+  }else sub.textContent='All done for today';
+}
+async function init(){
+  try{const d=await window.pi.getEvents();events=d.events||[];calOk=d.calendarConnected!==false;render()}
+  catch{list.innerHTML='<div class="empty">Could not load meetings</div>'}
+  try{const s=await window.pi.getStatus();setStatus(s)}catch{}
+}
+window.pi.onEventsUpdated(ev=>{events=ev;render()});
+window.pi.onStatusChanged(s=>setStatus(s));
+setInterval(render,60000);
+init();
+</script></body></html>
