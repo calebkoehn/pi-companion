@@ -6,6 +6,20 @@ const logger = require('./logger');
 
 let win = null;
 
+// Register IPC handlers once at module load — NOT inside createPanel()
+// Re-registering inside createPanel() causes duplicate handler errors when
+// the window is destroyed and recreated, making all IPC calls hang forever.
+ipcMain.handle('get-events',      () => ({
+  events: calendar.getEvents(),
+  calendarConnected: calendar.isCalendarConnected() !== false,
+}));
+ipcMain.handle('get-status',      () => 'idle');
+ipcMain.handle('get-version',     () => app.getVersion());
+ipcMain.handle('record-meeting',  (_e, id) => { calendar.recordMeeting(id); logger.info('Meeting marked for recording', { id }); });
+ipcMain.handle('skip-meeting',    (_e, id) => { calendar.skipMeeting(id);   logger.info('Meeting skipped', { id }); });
+ipcMain.handle('open-dashboard',  () => shell.openExternal(PI_APP_URL));
+ipcMain.handle('open-settings',   () => shell.openExternal(`${PI_APP_URL}/settings`));
+
 function createPanel() {
   win = new BrowserWindow({
     width: 360,
@@ -27,23 +41,13 @@ function createPanel() {
   win.loadFile(path.join(__dirname, 'panel.html'));
   win.on('blur', () => { if (win && win.isVisible()) win.hide(); });
 
-  ipcMain.handle('get-events', () => ({
-    events: calendar.getEvents(),
-    calendarConnected: calendar.isCalendarConnected() !== false,
-  }));
-  ipcMain.handle('get-status', () => 'idle');
-  ipcMain.handle('record-meeting', (_e, id) => { calendar.recordMeeting(id); logger.info('Meeting marked for recording', { id }); });
-  ipcMain.handle('skip-meeting',   (_e, id) => { calendar.skipMeeting(id);   logger.info('Meeting skipped', { id }); });
-  ipcMain.handle('open-dashboard', () => shell.openExternal(PI_APP_URL));
-  ipcMain.handle('open-settings',  () => shell.openExternal(`${PI_APP_URL}/settings`));
-  ipcMain.handle('get-version',    () => app.getVersion());
-
-  calendar.on('events-updated', (events) => {
-    if (win && !win.isDestroyed()) win.webContents.send('events-updated', events);
-  });
-
   return win;
 }
+
+// Forward calendar updates to the panel whenever it is open
+calendar.on('events-updated', (events) => {
+  if (win && !win.isDestroyed()) win.webContents.send('events-updated', events);
+});
 
 function togglePanel(trayBounds) {
   if (!win || win.isDestroyed()) createPanel();
