@@ -1,7 +1,7 @@
 {
   "name": "pi-companion",
   "productName": "PI Companion",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Muesli meeting recorder",
   "main": ".webpack/main",
   "scripts": {

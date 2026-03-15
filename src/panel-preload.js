@@ -1,5 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
-contextBridge.exposeInWorld('pi', {
+contextBridge.exposeInMainWorld('pi', {
   getEvents:       ()    => ipcRenderer.invoke('get-events'),
   getStatus:       ()    => ipcRenderer.invoke('get-status'),
   getVersion:      ()    => ipcRenderer.invoke('get-version'),
