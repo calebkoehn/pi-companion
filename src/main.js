@@ -29,7 +29,7 @@ function notifyAuthRequired() {
   sendStatusUpdate('needs-login');
   if (Notification.isSupported()) {
     const n = new Notification({
-      title: 'Performance IQ � Reconnect needed',
+      title: 'Performance IQ � Reconnect needed',
       body: 'Your session expired. Click to reconnect.',
     });
     n.on('click', () => shell.openExternal(`${PI_APP_URL}/settings`));
@@ -119,6 +119,15 @@ app.on('ready', async () => {
     calendar.start();
   } else {
     setState('needs-login');
+    // Token may be expired — prompt user to reconnect via web app
+    if (Notification.isSupported()) {
+      const n = new Notification({
+        title: 'Performance IQ — Reconnect needed',
+        body: 'Open Settings in the web app to reconnect the companion.',
+      });
+      n.on('click', () => shell.openExternal(`${PI_APP_URL}/settings`));
+      n.show();
+    }
   }
 
   initRecorder({

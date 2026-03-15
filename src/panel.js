@@ -1,4 +1,4 @@
-const { BrowserWindow, screen, ipcMain, shell } = require('electron');
+const { BrowserWindow, screen, ipcMain, shell, app } = require('electron');
 const path = require('path');
 const { PI_APP_URL } = require('./config');
 const calendar = require('./calendar');
@@ -36,6 +36,7 @@ function createPanel() {
   ipcMain.handle('skip-meeting',   (_e, id) => { calendar.skipMeeting(id);   logger.info('Meeting skipped', { id }); });
   ipcMain.handle('open-dashboard', () => shell.openExternal(PI_APP_URL));
   ipcMain.handle('open-settings',  () => shell.openExternal(`${PI_APP_URL}/settings`));
+  ipcMain.handle('get-version',    () => app.getVersion());
 
   calendar.on('events-updated', (events) => {
     if (win && !win.isDestroyed()) win.webContents.send('events-updated', events);
