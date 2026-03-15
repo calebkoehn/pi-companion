@@ -63,8 +63,8 @@ jobs:
             --wait
           echo "Stapling notarization ticket..."
           xcrun stapler staple "$DMG"
-          echo "Verifying..."
-          spctl --assess --type open --context context:primary-signature -v "$DMG"
+          echo "Verifying staple..."
+          xcrun stapler validate "$DMG"
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
