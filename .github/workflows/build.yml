@@ -29,16 +29,10 @@ jobs:
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
-
-          # Decode certificate
           echo "$APPLE_CERTIFICATE" | base64 --decode -o $RUNNER_TEMP/certificate.p12
-
-          # Create temp keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          # Import certificate
           security import $RUNNER_TEMP/certificate.p12 \
             -P "$APPLE_CERTIFICATE_PASSWORD" \
             -A -t cert -f pkcs12 \
@@ -46,10 +40,7 @@ jobs:
           security set-key-partition-list \
             -S apple-tool:,apple: \
             -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          # Add to search list
           security list-keychain -d user -s $KEYCHAIN_PATH
-
 
       - name: Build and sign app
         env:
@@ -57,6 +48,23 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run make
+
+      - name: Notarize DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          DMG=$(find out/make -name "*.dmg" | head -1)
+          echo "Notarizing: $DMG"
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "QLZ7FP98A3" \
+            --wait
+          echo "Stapling notarization ticket..."
+          xcrun stapler staple "$DMG"
+          echo "Verifying..."
+          spctl --assess --type open --context context:primary-signature -v "$DMG"
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
@@ -70,4 +78,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run publish
-
