@@ -2,6 +2,7 @@ const { BrowserWindow, screen, ipcMain, shell, app } = require('electron');
 const path = require('path');
 const { PI_APP_URL } = require('./config');
 const calendar = require('./calendar');
+const recorder = require('./recorder');
 const logger = require('./logger');
 
 let win = null;
@@ -13,8 +14,35 @@ ipcMain.handle('get-events',      () => ({
   events: calendar.getEvents(),
   calendarConnected: calendar.isCalendarConnected() !== false,
 }));
-ipcMain.handle('get-status',      () => 'idle');
+ipcMain.handle('get-status',      () => {
+  const state = recorder.getRecordingState();
+  return state.recording ? 'recording' : 'idle';
+});
 ipcMain.handle('get-version',     () => app.getVersion());
+
+// Record button: mark in calendar + start actual SDK recording
+ipcMain.handle('start-recording', async (_e, calendarEvent) => {
+  calendar.recordMeeting(calendarEvent.id);
+  const result = await recorder.startRecordingForEvent(calendarEvent);
+  logger.info('Start recording via panel', { eventId: calendarEvent.id, result });
+  if (result.success) {
+    sendStatusUpdate('recording');
+  } else if (result.pending) {
+    // Recording queued — will auto-start when meeting window opens
+    sendStatusUpdate('meeting-detected');
+  }
+  return result;
+});
+
+// Stop button: stop the actual SDK recording
+ipcMain.handle('stop-recording', async (_e, eventId) => {
+  const result = await recorder.stopActiveRecording();
+  logger.info('Stop recording via panel', { eventId, result });
+  // recording-ended event from SDK will update status
+  return result;
+});
+
+// Legacy handlers — still used for marking intent when no meeting window is detected yet
 ipcMain.handle('record-meeting',  (_e, id) => { calendar.recordMeeting(id); logger.info('Meeting marked for recording', { id }); });
 ipcMain.handle('skip-meeting',    (_e, id) => { calendar.skipMeeting(id);   logger.info('Meeting skipped', { id }); });
 ipcMain.handle('open-dashboard',  () => shell.openExternal(PI_APP_URL));

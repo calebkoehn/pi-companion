@@ -1,9 +1,9 @@
-const { app, shell, Notification } = require('electron');
+const { app, shell, Notification, systemPreferences } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const { createTray, setState } = require('./tray');
 const { togglePanel, sendStatusUpdate } = require('./panel');
-const { init: initRecorder } = require('./recorder');
+const { init: initRecorder, startRecordingForEvent } = require('./recorder');
 const { setJwt, isAuthenticated, sendHeartbeat, startTokenRefresh, stopTokenRefresh } = require('./tokenClient');
 const calendar = require('./calendar');
 const { notifyMeetingStarting, notifyRecordingStarted } = require('./notifier');
@@ -111,6 +111,22 @@ app.on('ready', async () => {
   await autoLaunch.enable();
   setupAutoUpdater();
 
+  // Request notification permission on macOS — without this, macOS silently drops notifications
+  if (process.platform === 'darwin') {
+    const supported = Notification.isSupported();
+    logger.info('Notification check', { supported });
+    if (supported) {
+      // Send a startup notification to force macOS to register the app and prompt for permission
+      const testNotif = new Notification({
+        title: 'Performance IQ is running',
+        body: 'You\u2019ll get notified before meetings start.',
+        silent: true,
+      });
+      testNotif.show();
+      logger.info('Startup notification sent to trigger macOS registration');
+    }
+  }
+
   if (isAuthenticated()) {
     setState('idle');
     sendStatusUpdate('idle');
@@ -133,8 +149,16 @@ app.on('ready', async () => {
   initRecorder({
     onMeetingDetected: (info) => {
       logger.info('Meeting detected by SDK', info);
+      sendStatusUpdate('meeting-detected');
+    },
+    onRecordingStarted: (info) => {
+      logger.info('Recording started (callback)', info);
       setState('recording');
       sendStatusUpdate('recording');
+      // Send a notification so user knows recording is active
+      if (info.calendarEvent) {
+        notifyRecordingStarted(info.calendarEvent);
+      }
     },
     onRecordingEnded: (info) => {
       logger.info('Recording ended', info);
@@ -145,14 +169,28 @@ app.on('ready', async () => {
 
   calendar.on('meeting-starting', (event) => {
     notifyMeetingStarting(event, {
-      onRecord: (ev) => {
+      onRecord: async (ev) => {
         calendar.recordMeeting(ev.id);
-        notifyRecordingStarted(ev);
-        logger.info('User chose to record from notification', { title: ev.title });
+        logger.info('User chose to record from notification', { title: ev.title || ev.summary });
+        // Actually start the Recall SDK recording
+        const result = await startRecordingForEvent(ev);
+        if (result.success) {
+          notifyRecordingStarted(ev);
+          setState('recording');
+          sendStatusUpdate('recording');
+        } else if (result.pending) {
+          logger.info('Recording queued — will auto-start when meeting window is detected', { title: ev.title || ev.summary });
+        } else {
+          logger.warn('Recording failed to start from notification', { reason: result.reason });
+        }
       },
       onSkip: (ev) => {
         calendar.skipMeeting(ev.id);
-        logger.info('User skipped meeting from notification', { title: ev.title });
+        logger.info('User skipped meeting from notification', { title: ev.title || ev.summary });
+      },
+      onOpen: (ev) => {
+        // Toggle the panel open when notification body is clicked
+        logger.info('User clicked notification body', { title: ev.title || ev.summary });
       },
     });
   });

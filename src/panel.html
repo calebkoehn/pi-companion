@@ -9,7 +9,7 @@ const dur=(s,e)=>{const m=Math.round((new Date(e)-new Date(s))/6e4);return m<60?
 const names=a=>(a||[]).filter(x=>!x.self).map(x=>x.displayName||x.email.split("@")[0]).slice(0,2).join(", ");
 const isPast=e=>new Date(e.end)<new Date();
 const isNow=e=>{const n=new Date();return new Date(e.start)<=n&&n<=new Date(e.end)};
-function setStatus(s){dot.className="dot";if(s==="idle")dot.classList.add("idle");else if(s==="recording")dot.classList.add("rec")}
+function setStatus(s){dot.className="dot";if(s==="idle")dot.classList.add("idle");else if(s==="recording")dot.classList.add("rec");else if(s==="meeting-detected")dot.classList.add("idle")}
 function render(){
   if(!calOk){
     list.innerHTML='<div class="nocal"><p>Connect Google Calendar in the web app to see your meetings here.</p><button class="cbtn" id="cc">Connect Calendar</button></div>';
@@ -28,24 +28,32 @@ function render(){
     else if(past)badge='<span class="badge bd">Done</span>';
     let act="";
     if(!past){
-      if(rec)act=`<div class="actions"><button class="btn btn-s" data-id="${ev.id}" data-a="s">Stop Recording</button></div>`;
+      if(rec)act=`<div class="actions"><button class="btn btn-s" data-id="${ev.id}" data-a="stop">Stop Recording</button></div>`;
       else if(skip)act=`<div class="actions"><button class="btn btn-r" data-id="${ev.id}" data-a="r">Record Instead</button></div>`;
       else act=`<div class="actions"><button class="btn btn-r" data-id="${ev.id}" data-a="r">&#9679; Record</button><button class="btn btn-s" data-id="${ev.id}" data-a="s">Skip</button></div>`;
     }
-    const att=names(ev.attendees);
-    html+=`<div class="${cls}"><div class="cr"><div class="tc"><div class="ct">${fmt(ev.start)}</div><div class="cd">${dur(ev.start,ev.end)}</div></div><div class="ci"><div class="cn" title="${ev.title}">${ev.title}</div>${att?`<div class="ca">with ${att}</div>`:""}</div>${badge?`<div style="flex-shrink:0;margin-left:4px">${badge}</div>`:""}</div>${act}</div>`;
+    const att=names(ev.attendees);const evTitle=ev.title||ev.summary||"Untitled meeting";
+    html+=`<div class="${cls}"><div class="cr"><div class="tc"><div class="ct">${fmt(ev.start)}</div><div class="cd">${dur(ev.start,ev.end)}</div></div><div class="ci"><div class="cn" title="${evTitle}">${evTitle}</div>${att?`<div class="ca">with ${att}</div>`:""}</div>${badge?`<div style="flex-shrink:0;margin-left:4px">${badge}</div>`:""}</div>${act}</div>`;
   });
   list.innerHTML=html;
   list.querySelectorAll("[data-a]").forEach(b=>{
-    b.onclick=()=>{const id=b.dataset.id,a=b.dataset.a;
-      if(a==="r"){recs.add(id);skips.delete(id);window.pi.recordMeeting(id)}
-      else{skips.add(id);recs.delete(id);window.pi.skipMeeting(id)}
+    b.onclick=async()=>{const id=b.dataset.id,a=b.dataset.a;
+      const ev=events.find(e=>e.id===id);
+      if(a==="r"){
+        recs.add(id);skips.delete(id);
+        if(ev){await window.pi.startRecording(ev)}else{window.pi.recordMeeting(id)}
+      } else if(a==="stop"){
+        await window.pi.stopRecording(id);
+        recs.delete(id);
+      } else{
+        skips.add(id);recs.delete(id);window.pi.skipMeeting(id)
+      }
       render()};
   });
   const next=events.find(e=>!isPast(e));
-  if(next){const m=Math.round((new Date(next.start)-now)/6e4);
-    if(isNow(next))sub.textContent="In meeting \u2014 "+next.title;
-    else if(m<=60)sub.textContent="Next in "+m+"m \u2014 "+next.title.substring(0,22);
+  if(next){const m=Math.round((new Date(next.start)-now)/6e4);const nTitle=next.title||next.summary||"Meeting";
+    if(isNow(next))sub.textContent="In meeting \u2014 "+nTitle;
+    else if(m<=60)sub.textContent="Next in "+m+"m \u2014 "+nTitle.substring(0,22);
     else sub.textContent=events.length+" meeting"+(events.length>1?"s":"")+" today";
   }else sub.textContent="All done for today";
 }

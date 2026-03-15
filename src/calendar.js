@@ -4,7 +4,7 @@ const { getJwt } = require('./tokenClient');
 const logger = require('./logger');
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
-const NOTIFY_BEFORE_MS = 60 * 1000;
+const NOTIFY_BEFORE_MS = 2 * 60 * 1000; // Notify 2 minutes before meeting starts
 
 class CalendarManager extends EventEmitter {
   constructor() {
@@ -35,7 +35,16 @@ class CalendarManager extends EventEmitter {
       this._calendarConnected = true;
       this.events = data.events || [];
       this.emit('events-updated', this.events);
-      logger.info('Calendar fetched', { count: this.events.length });
+      // Log upcoming events with time-to-start for debugging notifications
+      const now = Date.now();
+      const upcoming = this.events.map(e => ({
+        title: e.title || e.summary,
+        start: e.start,
+        msUntil: new Date(e.start).getTime() - now,
+        notified: this.notifiedIds.has(e.id),
+        skipped: this.skippedIds.has(e.id),
+      }));
+      logger.info('Calendar fetched', { count: this.events.length, upcoming });
     } catch (err) {
       logger.warn('Calendar fetch failed', { error: err.message });
     }
@@ -50,11 +59,14 @@ class CalendarManager extends EventEmitter {
       if (msUntil > 0 && msUntil <= NOTIFY_BEFORE_MS) {
         this.notifiedIds.add(event.id);
         this.emit('meeting-starting', event);
+        logger.info('Emitted meeting-starting', { title: event.title || event.summary, msUntil, start: event.start });
       }
     }
   }
 
   start() {
+    // Stop any existing timers first to prevent duplicate polling
+    this.stop();
     this.fetchEvents();
     this._pollTimer = setInterval(() => this.fetchEvents(), POLL_INTERVAL_MS);
     this._notifyTimer = setInterval(() => this.checkUpcoming(), 15000);

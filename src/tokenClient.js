@@ -90,7 +90,7 @@ function stopTokenRefresh() {
   if (tokenRefreshInterval) clearInterval(tokenRefreshInterval);
 }
 
-async function fetchUploadToken(platform) {
+async function fetchUploadToken(platform, title) {
   const jwt = getJwt();
   if (!jwt) throw Object.assign(new Error('Not authenticated'), { code: 'NOT_AUTHENTICATED' });
 
@@ -100,7 +100,7 @@ async function fetchUploadToken(platform) {
       const res = await fetchWithTimeout(`${PI_BACKEND_URL}/api/companion/token`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform }),
+        body: JSON.stringify({ platform, title: title || null }),
       });
       if (res.status === 401) throw Object.assign(new Error('JWT expired or invalid'), { code: 'JWT_EXPIRED' });
       if (!res.ok) throw new Error(`Token fetch failed: HTTP ${res.status}`);
